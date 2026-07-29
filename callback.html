@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Tokens EVE</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        pre { background: #222; padding: 15px; border: 1px solid #333; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h2>Résultat de l'authentification :</h2>
+    <pre id="result">Chargement des tokens...</pre>
+
+    <script>
+        const CONFIG = {
+            CLIENT_ID: "d1f75ade468049a7877d364c295f41e3" // Doit être le même que sur index.html
+        };
+
+        async function fetchTokens() {
+            const resultBox = document.getElementById("result");
+            
+            // 1. Récupérer les paramètres de l'URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get("code");
+            const state = urlParams.get("state");
+
+            // 2. Récupérer les infos de sécurité stockées à l'aller
+            const savedState = sessionStorage.getItem("pkce_state");
+            const verifier = sessionStorage.getItem("pkce_verifier");
+
+            if (!code) {
+                resultBox.innerText = "Erreur : Aucun code dans l'URL.";
+                return;
+            }
+            if (state !== savedState) {
+                resultBox.innerText = "Erreur : Le state ne correspond pas (faille CSRF potentielle).";
+                return;
+            }
+
+            // 3. Préparer la requête pour échanger le code contre les tokens
+            // Remarque : Pas de client_secret ni de header Authorization ici !
+            const body = new URLSearchParams({
+                grant_type: "authorization_code",
+                client_id: CONFIG.CLIENT_ID,
+                code: code,
+                code_verifier: verifier
+            });
+
+            try {
+                const res = await fetch("https://login.eveonline.com/v2/oauth/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: body
+                });
+
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(`Erreur EVE (${res.status}): ${err}`);
+                }
+
+                // 4. Afficher les tokens !
+                const tokens = await res.json();
+                
+                // Nettoie la session pour des raisons de sécurité
+                sessionStorage.removeItem("pkce_verifier");
+                sessionStorage.removeItem("pkce_state");
+
+                resultBox.innerText = JSON.stringify(tokens, null, 4);
+
+            } catch (error) {
+                resultBox.innerText = error.message;
+            }
+        }
+
+        // Lancer la fonction au chargement de la page
+        fetchTokens();
+    </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Login EVE</title>
+</head>
+<body>
+    <h1>Connexion à EVE Online</h1>
+    <button onclick="startLogin()">Se connecter avec EVE</button>
+
+    <script>
+        const CONFIG = {
+            CLIENT_ID: "d1f75ade468049a7877d364c295f41e3",
+            REDIRECT_URI: "http://Kapouta.github.io/tokenizer/callback.html", // À adapter selon ton serveur local
+            SCOPES: [
+    "publicData",
+    "esi-location.read_location.v1",
+    "esi-location.read_ship_type.v1",
+    "esi-location.read_online.v1",
+    "esi-skills.read_skills.v1",
+    "esi-skills.read_skillqueue.v1",
+    "esi-wallet.read_character_wallet.v1",
+    "esi-wallet.read_corporation_wallets.v1",
+    "esi-assets.read_assets.v1",
+    "esi-assets.read_corporation_assets.v1",
+    "esi-characters.read_notifications.v1",
+    "esi-characters.read_standings.v1",
+    "esi-characters.read_contacts.v1",
+    "esi-corporations.read_corporation_membership.v1",
+    "esi-corporations.read_structures.v1",
+    "esi-corporations.read_starbases.v1",
+    "esi-corporations.read_divisions.v1",
+    "esi-corporations.read_facilities.v1",
+    "esi-corporations.read_contacts.v1",
+    "esi-corporations.read_titles.v1",
+    "esi-corporations.track_members.v1",
+    "esi-killmails.read_killmails.v1",
+    "esi-killmails.read_corporation_killmails.v1",
+    "esi-alliances.read_contacts.v1",
+    "esi-industry.read_character_jobs.v1",
+    "esi-industry.read_corporation_jobs.v1",
+    "esi-planets.read_customs_offices.v1",
+    "esi-contracts.read_character_contracts.v1",
+    "esi-contracts.read_corporation_contracts.v1",
+    "esi-markets.read_character_orders.v1",
+    "esi-markets.read_corporation_orders.v1",
+    "esi-fleets.read_fleet.v1",
+    "esi-fittings.read_fittings.v1",
+    "esi-clones.read_clones.v1",
+    "esi-clones.read_implants.v1"
+  ].join(" ") // Mets tes scopes ici
+        };
+
+        // --- Utilitaires PKCE ---
+        function base64UrlEncode(buffer) {
+            return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        }
+        
+        async function sha256(str) {
+            const data = new TextEncoder().encode(str);
+            return await crypto.subtle.digest("SHA-256", data);
+        }
+        
+        function randomString(len = 64) {
+            const arr = new Uint8Array(len);
+            crypto.getRandomValues(arr);
+            return base64UrlEncode(arr.buffer);
+        }
+
+        // --- Lancement de la connexion ---
+        async function startLogin() {
+            const verifier = randomString(64);
+            const challenge = base64UrlEncode(await sha256(verifier));
+            const state = randomString(16);
+
+            // On sauvegarde le verifier pour l'utiliser sur la page de retour
+            sessionStorage.setItem("pkce_verifier", verifier);
+            sessionStorage.setItem("pkce_state", state);
+
+            const params = new URLSearchParams({
+                response_type: "code",
+                redirect_uri: CONFIG.REDIRECT_URI,
+                client_id: CONFIG.CLIENT_ID,
+                scope: CONFIG.SCOPES,
+                state: state,
+                code_challenge: challenge,
+                code_challenge_method: "S256"
+            });
+            
+            window.location.href = `https://login.eveonline.com/v2/oauth/authorize?${params.toString()}`;
+        }
+    </script>
+</body>
+</html>
